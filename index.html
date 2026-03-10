@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Envío de contenido - Boletín Menonita</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+
+body{
+font-family: system-ui, sans-serif;
+background:#f4f4f4;
+margin:0;
+padding:2rem;
+}
+
+.container{
+max-width:800px;
+margin:auto;
+background:white;
+padding:2rem;
+border-radius:10px;
+box-shadow:0 4px 15px rgba(0,0,0,0.1);
+}
+
+h1{
+text-align:center;
+}
+
+label{
+font-weight:600;
+margin-top:1rem;
+display:block;
+}
+
+input,select,textarea{
+width:100%;
+padding:10px;
+margin-top:5px;
+border-radius:6px;
+border:1px solid #ccc;
+}
+
+textarea{
+min-height:150px;
+}
+
+button{
+margin-top:2rem;
+width:100%;
+padding:15px;
+font-size:16px;
+background:#0b7a3b;
+color:white;
+border:none;
+border-radius:8px;
+cursor:pointer;
+}
+
+button:hover{
+background:#095f2d;
+}
+
+.success{
+margin-top:20px;
+color:green;
+text-align:center;
+font-weight:600;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Enviar contenido para el boletín</h1>
+
+<form id="boletinForm">
+
+<label>Título</label>
+<input type="text" id="titulo" required>
+
+<label>Zona</label>
+<input type="text" id="zona" required>
+
+<label>Iglesia</label>
+<input type="text" id="iglesia" required>
+
+<label>Autor</label>
+<input type="text" id="autor" required>
+
+<label>Fecha del evento</label>
+<input type="date" id="fecha_evento">
+
+<label>Categoría</label>
+<select id="categoria">
+
+<option>Actividad</option>
+<option>Testimonio</option>
+<option>Anuncio</option>
+<option>Evangelismo</option>
+<option>Juventud</option>
+<option>Mujeres</option>
+<option>Pastoral</option>
+<option>Evento</option>
+<option>Otro</option>
+
+</select>
+
+<label>Contenido</label>
+<textarea id="contenido"></textarea>
+
+<label>Imágenes</label>
+<input type="file" id="imagenes" multiple accept="image/*">
+
+<h3>Declaración de uso de IA</h3>
+
+<label>¿El texto fue generado o editado con IA?</label>
+<select id="texto_ai_estado">
+
+<option>No</option>
+<option>Editado con IA</option>
+<option>Generado con IA</option>
+
+</select>
+
+<label>¿Las imágenes fueron generadas o editadas con IA?</label>
+<select id="imagenes_ai_estado">
+
+<option>No</option>
+<option>Editadas con IA</option>
+<option>Generadas con IA</option>
+
+</select>
+
+<label>Aclaración adicional sobre IA</label>
+<textarea id="ai_aclaracion"></textarea>
+
+<button type="submit">Enviar contenido</button>
+
+</form>
+
+<div class="success" id="msg"></div>
+
+</div>
+
+<script>
+
+const supabaseUrl = "YOUR_SUPABASE_URL"
+const supabaseKey = "YOUR_SUPABASE_ANON_KEY"
+
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey)
+
+document.getElementById("boletinForm").addEventListener("submit", async function(e){
+
+e.preventDefault()
+
+const titulo = document.getElementById("titulo").value
+const zona = document.getElementById("zona").value
+const iglesia = document.getElementById("iglesia").value
+const autor = document.getElementById("autor").value
+const fecha_evento = document.getElementById("fecha_evento").value
+const categoria = document.getElementById("categoria").value
+const contenido = document.getElementById("contenido").value
+
+const texto_ai_estado = document.getElementById("texto_ai_estado").value
+const imagenes_ai_estado = document.getElementById("imagenes_ai_estado").value
+const ai_aclaracion = document.getElementById("ai_aclaracion").value
+
+const files = document.getElementById("imagenes").files
+
+let imageUrls = []
+
+for (let file of files){
+
+const filePath = `boletin/${Date.now()}_${file.name}`
+
+const { error } = await supabase.storage
+.from("boletin-imagenes")
+.upload(filePath, file)
+
+if(error){
+alert("Error subiendo imagen")
+return
+}
+
+const { data } = supabase
+.storage
+.from("boletin-imagenes")
+.getPublicUrl(filePath)
+
+imageUrls.push(data.publicUrl)
+
+}
+
+const { error } = await supabase
+.from("boletin_envios")
+.insert([
+
+{
+titulo,
+zona,
+iglesia,
+autor,
+fecha_evento,
+categoria,
+contenido,
+texto_ai_estado,
+imagenes_ai_estado,
+ai_aclaracion,
+imagenes:imageUrls,
+estado_editorial:"pendiente"
+
+}
+
+])
+
+if(error){
+
+alert("Error guardando información")
+
+}else{
+
+document.getElementById("msg").innerText="Contenido enviado correctamente"
+document.getElementById("boletinForm").reset()
+
+}
+
+})
+
+</script>
+
+</body>
+</html>
