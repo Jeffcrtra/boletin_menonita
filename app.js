@@ -1,5 +1,5 @@
-const supabaseUrl = "YOUR_SUPABASE_URL";
-const supabaseKey = "YOUR_SUPABASE_ANON_KEY";
+const supabaseUrl = "https://lomvwmrnfemuemrdamtu.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvbXZ3bXJuZmVtdWVtcmRhbXR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNzU1NDQsImV4cCI6MjA4ODc1MTU0NH0.n_WHSZN-_TWdt5cSeQC7zanUCjb_MQ0AFFU-ULKFjPo";
 
 const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
