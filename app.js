@@ -16,12 +16,13 @@ const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 function setStatus(message, type = "") {
+  if (!statusEl) return;
   statusEl.textContent = message;
   statusEl.className = `status ${type}`.trim();
 }
 
 function slugify(text) {
-  return text
+  return (text || "")
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -35,12 +36,12 @@ function formatDateForPath(dateString) {
 }
 
 function clearPreviews() {
-  previewList.innerHTML = "";
+  if (previewList) previewList.innerHTML = "";
 }
 
 function renderImagePreviews(files) {
   clearPreviews();
-  if (!files || files.length === 0) return;
+  if (!files || files.length === 0 || !previewList) return;
 
   Array.from(files).forEach((file) => {
     const item = document.createElement("div");
@@ -69,15 +70,25 @@ function validateFiles(files) {
   if (!files || files.length === 0) return { ok: true };
 
   if (files.length > MAX_FILES) {
-    return { ok: false, message: `Solo se permiten hasta ${MAX_FILES} imágenes.` };
+    return {
+      ok: false,
+      message: `Solo se permiten hasta ${MAX_FILES} imágenes.`,
+    };
   }
 
   for (const file of files) {
     if (!file.type.startsWith("image/")) {
-      return { ok: false, message: `El archivo "${file.name}" no es una imagen válida.` };
+      return {
+        ok: false,
+        message: `El archivo "${file.name}" no es una imagen válida.`,
+      };
     }
+
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      return { ok: false, message: `La imagen "${file.name}" supera ${MAX_FILE_SIZE_MB} MB.` };
+      return {
+        ok: false,
+        message: `La imagen "${file.name}" supera ${MAX_FILE_SIZE_MB} MB.`,
+      };
     }
   }
 
@@ -86,16 +97,16 @@ function validateFiles(files) {
 
 function getFormValues() {
   return {
-    titulo: document.getElementById("titulo").value.trim(),
-    zona: document.getElementById("zona").value.trim(),
-    iglesia: document.getElementById("iglesia").value.trim(),
-    autor: document.getElementById("autor").value.trim(),
-    contacto: document.getElementById("contacto").value.trim() || null,
-    fecha_evento: document.getElementById("fecha_evento").value || null,
-    categoria: document.getElementById("categoria").value,
-    contenido: document.getElementById("contenido").value.trim(),
-    texto_ai_estado: document.getElementById("texto_ai_estado").value,
-    imagenes_ai_estado: document.getElementById("imagenes_ai_estado").value,
+    titulo: document.getElementById("titulo")?.value.trim() || "",
+    zona: document.getElementById("zona")?.value.trim() || "",
+    iglesia: document.getElementById("iglesia")?.value.trim() || "",
+    autor: document.getElementById("autor")?.value.trim() || "",
+    contacto: document.getElementById("contacto")?.value.trim() || null,
+    fecha_evento: document.getElementById("fecha_evento")?.value || null,
+    categoria: document.getElementById("categoria")?.value || "",
+    contenido: document.getElementById("contenido")?.value.trim() || "",
+    texto_ai_estado: document.getElementById("texto_ai_estado")?.value || "No",
+    imagenes_ai_estado: document.getElementById("imagenes_ai_estado")?.value || "No",
     ai_aclaracion: null,
   };
 }
@@ -105,6 +116,7 @@ function validateForm(values, files) {
   if (!values.zona) return "La zona es obligatoria.";
   if (!values.iglesia) return "La iglesia es obligatoria.";
   if (!values.autor) return "El autor es obligatorio.";
+  if (!values.categoria) return "La categoría es obligatoria.";
   if (!values.contenido) return "El contenido no puede estar vacío.";
 
   const fileValidation = validateFiles(files);
@@ -187,7 +199,7 @@ imagenesInput?.addEventListener("change", (e) => {
 });
 
 clearBtn?.addEventListener("click", () => {
-  form.reset();
+  form?.reset();
   clearPreviews();
   setStatus("");
 });
@@ -196,20 +208,23 @@ form?.addEventListener("submit", async (e) => {
   e.preventDefault();
   setStatus("");
 
-  const values = getFormValues();
-  const files = imagenesInput.files;
-
-  const validationError = validateForm(values, files);
-  if (validationError) {
-    setStatus(validationError, "error");
-    return;
-  }
+  const files = imagenesInput?.files || null;
 
   submitBtn.disabled = true;
   submitBtn.textContent = "Enviando...";
-  setStatus("Subiendo y registrando tu información...", "");
+  setStatus("Subiendo y registrando tu información...");
 
   try {
+    const values = getFormValues();
+
+    const validationError = validateForm(values, files);
+    if (validationError) {
+      setStatus(validationError, "error");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Enviar contenido";
+      return;
+    }
+
     let imageUrls = [];
 
     if (files && files.length > 0) {
@@ -221,7 +236,11 @@ form?.addEventListener("submit", async (e) => {
     form.reset();
     clearPreviews();
 
-    const mensaje = `Información enviada correctamente.\n\nCódigo de confirmación: ${result.codigo_confirmacion}\nFecha de recepción: ${result.fecha_recepcion}\n\nGuarda este código por si necesitamos dar seguimiento.`;
+    const mensaje =
+      `Información enviada correctamente.\n\n` +
+      `Código de confirmación: ${result.codigo_confirmacion}\n` +
+      `Fecha de recepción: ${result.fecha_recepcion}\n\n` +
+      `Guarda este código por si necesitamos dar seguimiento.`;
 
     alert(mensaje);
 
@@ -230,7 +249,7 @@ form?.addEventListener("submit", async (e) => {
       "success"
     );
   } catch (error) {
-    console.error(error);
+    console.error("Error en submit:", error);
     setStatus(error.message || "Ocurrió un error inesperado.", "error");
   } finally {
     submitBtn.disabled = false;
