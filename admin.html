@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Boletín Menonita</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="admin.js" defer></script>
+</head>
+<body>
+  <main class="page">
+    <div class="container">
+      <header class="header">
+        <h1>Panel editorial</h1>
+        <p>Revisión de envíos del boletín</p>
+      </header>
+
+      <div class="form-wrap">
+        <section class="section">
+          <div class="grid">
+            <div class="field">
+              <label for="filtroEstado">Filtrar por estado</label>
+              <select id="filtroEstado">
+                <option value="pendiente">Pendiente</option>
+                <option value="aprobado">Aprobado</option>
+                <option value="publicado">Publicado</option>
+                <option value="rechazado">Rechazado</option>
+                <option value="todos">Todos</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>&nbsp;</label>
+              <button type="button" id="reloadBtn">Recargar</button>
+            </div>
+          </div>
+        </section>
+
+        <div id="status" class="status"></div>
+        <div id="adminList" class="admin-list"></div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
