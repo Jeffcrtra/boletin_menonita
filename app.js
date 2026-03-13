@@ -1,7 +1,6 @@
 const supabaseUrl = "https://lomvwmrnfemuemrdamtu.supabase.co";
 const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvbXZ3bXJuZmVtdWVtcmRhbXR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNzU1NDQsImV4cCI6MjA4ODc1MTU0NH0.n_WHSZN-_TWdt5cSeQC7zanUCjb_MQ0AFFU-ULKFjPo";
-
-const edgeFunctionName = "YOUR_EDGE_FUNCTION_NAME";
+const edgeFunctionName = "boletin-confirmacion";
 
 const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
@@ -12,7 +11,7 @@ const statusEl = document.getElementById("status");
 const imagenesInput = document.getElementById("imagenes");
 const previewList = document.getElementById("previewList");
 
-const MAX_FILES = 6;
+const MAX_FILES = 3;
 const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
@@ -91,7 +90,6 @@ function getFormValues() {
     zona: document.getElementById("zona").value.trim(),
     iglesia: document.getElementById("iglesia").value.trim(),
     autor: document.getElementById("autor").value.trim(),
-    email_remitente: document.getElementById("email_remitente").value.trim(),
     contacto: document.getElementById("contacto").value.trim() || null,
     fecha_evento: document.getElementById("fecha_evento").value || null,
     categoria: document.getElementById("categoria").value,
@@ -107,7 +105,6 @@ function validateForm(values, files) {
   if (!values.zona) return "La zona es obligatoria.";
   if (!values.iglesia) return "La iglesia es obligatoria.";
   if (!values.autor) return "El autor es obligatorio.";
-  if (!values.email_remitente) return "El correo electrónico es obligatorio.";
   if (!values.contenido) return "El contenido no puede estar vacío.";
 
   const fileValidation = validateFiles(files);
@@ -224,8 +221,12 @@ form?.addEventListener("submit", async (e) => {
     form.reset();
     clearPreviews();
 
+    const mensaje = `Información enviada correctamente.\n\nCódigo de confirmación: ${result.codigo_confirmacion}\nFecha de recepción: ${result.fecha_recepcion}\n\nGuarda este código por si necesitamos dar seguimiento.`;
+
+    alert(mensaje);
+
     setStatus(
-      `Información enviada correctamente. Código de confirmación: ${result.codigo_confirmacion}. Fecha de recepción: ${result.fecha_recepcion}. También enviamos esta confirmación al correo registrado.`,
+      `Información enviada correctamente. Código de confirmación: ${result.codigo_confirmacion}. Fecha de recepción: ${result.fecha_recepcion}.`,
       "success"
     );
   } catch (error) {
