@@ -96,7 +96,7 @@ function getFormValues() {
     contenido: document.getElementById("contenido").value.trim(),
     texto_ai_estado: document.getElementById("texto_ai_estado").value,
     imagenes_ai_estado: document.getElementById("imagenes_ai_estado").value,
-    ai_aclaracion: document.getElementById("ai_aclaracion").value.trim() || null,
+    ai_aclaracion: null,
   };
 }
 
