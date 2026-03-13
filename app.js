@@ -4,7 +4,7 @@ const supabaseUrl = "https://lomvwmrnfemuemrdamtu.supabase.co";
 const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvbXZ3bXJuZmVtdWVtcmRhbXR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNzU1NDQsImV4cCI6MjA4ODc1MTU0NH0.n_WHSZN-_TWdt5cSeQC7zanUCjb_MQ0AFFU-ULKFjPo";
 const edgeFunctionName = "boletin-confirmacion";
 
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+const supabaseClient = window.supabaseClient.createClient(supabaseUrl, supabaseKey);
 
 const form = document.getElementById("boletinForm");
 const submitBtn = document.getElementById("submitBtn");
@@ -139,7 +139,7 @@ async function uploadImages(files, meta) {
     const uniqueName = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
     const filePath = `${datePart}/${safeZone}/${safeChurch}/${safeTitle}/${uniqueName}`;
 
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabaseClient.storage
       .from("boletin-imagenes")
       .upload(filePath, file, {
         cacheControl: "3600",
@@ -150,7 +150,7 @@ async function uploadImages(files, meta) {
       throw new Error(`Error subiendo "${file.name}": ${uploadError.message}`);
     }
 
-    const { data: publicData } = supabase.storage
+    const { data: publicData } = supabaseClient.storage
       .from("boletin-imagenes")
       .getPublicUrl(filePath);
 
@@ -167,7 +167,7 @@ async function uploadImages(files, meta) {
 }
 
 async function sendToEdgeFunction(values, imageUrls) {
-  const { data, error } = await supabase.functions.invoke(edgeFunctionName, {
+  const { data, error } = await supabaseClient.functions.invoke(edgeFunctionName, {
     body: {
       ...values,
       imagenes: imageUrls,
