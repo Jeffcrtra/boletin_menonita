@@ -4,7 +4,8 @@ const supabaseUrl = "https://lomvwmrnfemuemrdamtu.supabase.co";
 const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvbXZ3bXJuZmVtdWVtcmRhbXR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNzU1NDQsImV4cCI6MjA4ODc1MTU0NH0.n_WHSZN-_TWdt5cSeQC7zanUCjb_MQ0AFFU-ULKFjPo";
 const edgeFunctionName = "boletin-confirmacion";
 
-const supabaseClient = window.supabaseClient.createClient(supabaseUrl, supabaseKey);
+const { createClient } = supabase;
+const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
 const form = document.getElementById("boletinForm");
 const submitBtn = document.getElementById("submitBtn");
