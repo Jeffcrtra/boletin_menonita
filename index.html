@@ -1,239 +1,135 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>Envío de contenido - Boletín Menonita</title>
+  <meta charset="UTF-8" />
+  <title>10.23 Envío de contenido - Boletín Menonita</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<style>
-
-body{
-font-family: system-ui, sans-serif;
-background:#f4f4f4;
-margin:0;
-padding:2rem;
-}
-
-.container{
-max-width:800px;
-margin:auto;
-background:white;
-padding:2rem;
-border-radius:10px;
-box-shadow:0 4px 15px rgba(0,0,0,0.1);
-}
-
-h1{
-text-align:center;
-}
-
-label{
-font-weight:600;
-margin-top:1rem;
-display:block;
-}
-
-input,select,textarea{
-width:100%;
-padding:10px;
-margin-top:5px;
-border-radius:6px;
-border:1px solid #ccc;
-}
-
-textarea{
-min-height:150px;
-}
-
-button{
-margin-top:2rem;
-width:100%;
-padding:15px;
-font-size:16px;
-background:#0b7a3b;
-color:white;
-border:none;
-border-radius:8px;
-cursor:pointer;
-}
-
-button:hover{
-background:#095f2d;
-}
-
-.success{
-margin-top:20px;
-color:green;
-text-align:center;
-font-weight:600;
-}
-
-</style>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js" defer></script>
 </head>
-
 <body>
+  <main class="page">
+    <div class="container">
+      <header class="header">
+        <h1>Enviar contenido para el boletín</h1>
+        <p>Comparte noticias, actividades, testimonios y anuncios para El Mensajero Menonita.</p>
+      </header>
 
-<div class="container">
+      <div class="form-wrap">
+        <form id="boletinForm">
+          <section class="section">
+            <h2>Información general</h2>
 
-<h1>Enviar contenido para el boletín</h1>
+            <div class="grid">
+              <div class="field">
+                <label for="titulo">Título <span class="required">*</span></label>
+                <input type="text" id="titulo" required />
+              </div>
 
-<form id="boletinForm">
+              <div class="field">
+                <label for="categoria">Categoría <span class="required">*</span></label>
+                <select id="categoria" required>
+                  <option value="Actividad">Actividad</option>
+                  <option value="Testimonio">Testimonio</option>
+                  <option value="Anuncio">Anuncio</option>
+                  <option value="Evangelismo">Evangelismo</option>
+                  <option value="Juventud">Juventud</option>
+                  <option value="Mujeres">Mujeres</option>
+                  <option value="Pastoral">Pastoral</option>
+                  <option value="Evento">Evento</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
 
-<label>Título</label>
-<input type="text" id="titulo" required>
+              <div class="field">
+                <label for="zona">Zona <span class="required">*</span></label>
+                <input type="text" id="zona" required />
+              </div>
 
-<label>Zona</label>
-<input type="text" id="zona" required>
+              <div class="field">
+                <label for="iglesia">Iglesia <span class="required">*</span></label>
+                <input type="text" id="iglesia" required />
+              </div>
 
-<label>Iglesia</label>
-<input type="text" id="iglesia" required>
+              <div class="field">
+                <label for="autor">Autor / remitente <span class="required">*</span></label>
+                <input type="text" id="autor" required />
+              </div>
 
-<label>Autor</label>
-<input type="text" id="autor" required>
+              <div class="field">
+                <label for="email_remitente">Correo electrónico <span class="required">*</span></label>
+                <input type="email" id="email_remitente" required />
+                <div class="hint">Aquí enviaremos el código de confirmación.</div>
+              </div>
 
-<label>Fecha del evento</label>
-<input type="date" id="fecha_evento">
+              <div class="field">
+                <label for="contacto">Teléfono o contacto adicional</label>
+                <input type="text" id="contacto" />
+              </div>
 
-<label>Categoría</label>
-<select id="categoria">
+              <div class="field">
+                <label for="fecha_evento">Fecha del evento</label>
+                <input type="date" id="fecha_evento" />
+              </div>
 
-<option>Actividad</option>
-<option>Testimonio</option>
-<option>Anuncio</option>
-<option>Evangelismo</option>
-<option>Juventud</option>
-<option>Mujeres</option>
-<option>Pastoral</option>
-<option>Evento</option>
-<option>Otro</option>
+              <div class="field full">
+                <label for="contenido">Contenido <span class="required">*</span></label>
+                <textarea id="contenido" required></textarea>
+              </div>
+            </div>
+          </section>
 
-</select>
+          <section class="section">
+            <h2>Imágenes</h2>
 
-<label>Contenido</label>
-<textarea id="contenido"></textarea>
+            <div class="field full">
+              <label for="imagenes">Adjuntar imágenes</label>
+              <input type="file" id="imagenes" multiple accept="image/*" />
+              <div class="hint">Máximo 6 imágenes. Formatos recomendados: JPG, PNG o WEBP.</div>
+            </div>
 
-<label>Imágenes</label>
-<input type="file" id="imagenes" multiple accept="image/*">
+            <div id="previewList" class="preview-list"></div>
+          </section>
 
-<h3>Declaración de uso de IA</h3>
+          <section class="section">
+            <h2>Declaración sobre uso de IA</h2>
 
-<label>¿El texto fue generado o editado con IA?</label>
-<select id="texto_ai_estado">
+            <div class="grid">
+              <div class="field">
+                <label for="texto_ai_estado">¿El texto fue generado o editado con IA?</label>
+                <select id="texto_ai_estado">
+                  <option value="No">No</option>
+                  <option value="Editado con IA">Editado con IA</option>
+                  <option value="Generado con IA">Generado con IA</option>
+                </select>
+              </div>
 
-<option>No</option>
-<option>Editado con IA</option>
-<option>Generado con IA</option>
+              <div class="field">
+                <label for="imagenes_ai_estado">¿Las imágenes fueron generadas o editadas con IA?</label>
+                <select id="imagenes_ai_estado">
+                  <option value="No">No</option>
+                  <option value="Editadas con IA">Editadas con IA</option>
+                  <option value="Generadas con IA">Generadas con IA</option>
+                </select>
+              </div>
 
-</select>
+            </div>
+          </section>
 
-<label>¿Las imágenes fueron generadas o editadas con IA?</label>
-<select id="imagenes_ai_estado">
+          <div class="actions">
+            <button type="submit" id="submitBtn">Enviar contenido</button>
+            <button type="button" class="secondary-btn" id="clearBtn">Limpiar formulario</button>
+          </div>
 
-<option>No</option>
-<option>Editadas con IA</option>
-<option>Generadas con IA</option>
-
-</select>
-
-<label>Aclaración adicional sobre IA</label>
-<textarea id="ai_aclaracion"></textarea>
-
-<button type="submit">Enviar contenido</button>
-
-</form>
-
-<div class="success" id="msg"></div>
-
-</div>
-
-<script>
-
-const supabaseUrl = "YOUR_SUPABASE_URL"
-const supabaseKey = "YOUR_SUPABASE_ANON_KEY"
-
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey)
-
-document.getElementById("boletinForm").addEventListener("submit", async function(e){
-
-e.preventDefault()
-
-const titulo = document.getElementById("titulo").value
-const zona = document.getElementById("zona").value
-const iglesia = document.getElementById("iglesia").value
-const autor = document.getElementById("autor").value
-const fecha_evento = document.getElementById("fecha_evento").value
-const categoria = document.getElementById("categoria").value
-const contenido = document.getElementById("contenido").value
-
-const texto_ai_estado = document.getElementById("texto_ai_estado").value
-const imagenes_ai_estado = document.getElementById("imagenes_ai_estado").value
-const ai_aclaracion = document.getElementById("ai_aclaracion").value
-
-const files = document.getElementById("imagenes").files
-
-let imageUrls = []
-
-for (let file of files){
-
-const filePath = `boletin/${Date.now()}_${file.name}`
-
-const { error } = await supabase.storage
-.from("boletin-imagenes")
-.upload(filePath, file)
-
-if(error){
-alert("Error subiendo imagen")
-return
-}
-
-const { data } = supabase
-.storage
-.from("boletin-imagenes")
-.getPublicUrl(filePath)
-
-imageUrls.push(data.publicUrl)
-
-}
-
-const { error } = await supabase
-.from("boletin_envios")
-.insert([
-
-{
-titulo,
-zona,
-iglesia,
-autor,
-fecha_evento,
-categoria,
-contenido,
-texto_ai_estado,
-imagenes_ai_estado,
-ai_aclaracion,
-imagenes:imageUrls,
-estado_editorial:"pendiente"
-
-}
-
-])
-
-if(error){
-
-alert("Error guardando información")
-
-}else{
-
-document.getElementById("msg").innerText="Contenido enviado correctamente"
-document.getElementById("boletinForm").reset()
-
-}
-
-})
-
-</script>
-
+          <div id="status" class="status"></div>
+          <div class="footer-note">
+            Al enviar este formulario, recibirás un correo con tu código de confirmación y la fecha/hora de recepción.
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
 </body>
 </html>
