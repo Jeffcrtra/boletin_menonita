@@ -64,7 +64,7 @@ function renderCard(row) {
         </div>
 
         <div class="admin-actions">
-          <select data-id="${row.id}" class="estadoSelect">
+          <select data-id="${row.id}" data-estado-actual="${row.estado_editorial || ""}" class="estadoSelect">
             <option value="pendiente" ${row.estado_editorial === "pendiente" ? "selected" : ""}>Pendiente</option>
             <option value="aprobado" ${row.estado_editorial === "aprobado" ? "selected" : ""}>Aprobado</option>
             <option value="publicado" ${row.estado_editorial === "publicado" ? "selected" : ""}>Publicado</option>
@@ -109,6 +109,7 @@ async function cargarEnvios() {
 
   try {
     const estado = filtroEstado.value;
+    console.log("Filtro actual:", estado);
 
     let query = supabaseClient
       .from("boletin_envios")
@@ -124,6 +125,8 @@ async function cargarEnvios() {
     if (error) {
       throw new Error(error.message);
     }
+
+    console.log("Envíos cargados:", data);
 
     if (!data || data.length === 0) {
       adminList.innerHTML = `<p class="hint">No hay envíos para este filtro.</p>`;
@@ -142,15 +145,19 @@ async function cargarEnvios() {
 
 async function actualizarEstado(id, nuevoEstado) {
   try {
-    const { error } = await supabaseClient
+    console.log("Actualizando estado:", { id, nuevoEstado });
+
+    const { data, error } = await supabaseClient
       .from("boletin_envios")
       .update({ estado_editorial: nuevoEstado })
-      .eq("id", id);
+      .eq("id", id)
+      .select();
 
     if (error) {
       throw new Error(error.message);
     }
 
+    console.log("Resultado update:", data);
     setStatus(`Estado actualizado a "${nuevoEstado}".`, "success");
     await cargarEnvios();
   } catch (error) {
@@ -165,7 +172,20 @@ function bindSaveButtons() {
       const id = btn.dataset.id;
       const select = document.querySelector(`.estadoSelect[data-id="${id}"]`);
       const nuevoEstado = select.value;
+      const estadoActual = select.dataset.estadoActual;
+
+      if (nuevoEstado === estadoActual) {
+        setStatus("No hubo cambios para guardar.");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Guardando...";
+
       await actualizarEstado(id, nuevoEstado);
+
+      btn.disabled = false;
+      btn.textContent = "Guardar";
     });
   });
 }
