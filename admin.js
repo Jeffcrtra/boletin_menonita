@@ -24,11 +24,13 @@ const pdfContent = document.getElementById("pdfContent");
 const ESTADOS = ["pendiente", "aprobado", "publicado", "rechazado"];
 
 function setStatus(message, type = "") {
+  if (!statusEl) return;
   statusEl.textContent = message;
   statusEl.className = `status ${type}`.trim();
 }
 
 function setPublicacionStatus(message, type = "") {
+  if (!publicacionStatus) return;
   publicacionStatus.textContent = message;
   publicacionStatus.className = `status ${type}`.trim();
 }
@@ -192,7 +194,7 @@ async function cargarConteosEstados() {
     };
 
     for (const row of data || []) {
-      const estado = row.estado_editorial;
+      const estado = (row.estado_editorial || "").trim().toLowerCase();
       if (Object.prototype.hasOwnProperty.call(conteos, estado)) {
         conteos[estado]++;
       }
@@ -205,6 +207,8 @@ async function cargarConteosEstados() {
 }
 
 function actualizarOpcionesFiltro(conteos) {
+  if (!filtroEstado) return;
+
   const valorActual = (filtroEstado.value || "pendiente").trim().toLowerCase();
 
   const total =
@@ -228,25 +232,29 @@ function actualizarOpcionesFiltro(conteos) {
 }
 
 function actualizarVisibilidadBotonPublicar() {
-  if (!publicarBtnWrap || !filtroEstado) return;
+  if (!publicarBtnWrap || !publicarBtn || !filtroEstado) return;
 
   const estado = (filtroEstado.value || "").trim().toLowerCase();
   const mostrar = estado === "aprobado";
 
-  publicarBtnWrap.classList.toggle("hidden", !mostrar);
+  // Forma robusta: no depender solo del CSS
+  publicarBtnWrap.hidden = !mostrar;
+  publicarBtn.hidden = !mostrar;
+  publicarBtn.disabled = !mostrar;
 
   console.log("Visibilidad botón publicar:", {
     estadoActual: estado,
-    mostrar
+    mostrar,
+    wrapHidden: publicarBtnWrap.hidden
   });
 }
 
 async function cargarEnvios() {
   setStatus("Cargando envíos...");
-  adminList.innerHTML = "";
+  if (adminList) adminList.innerHTML = "";
 
   try {
-    const estado = filtroEstado.value;
+    const estado = (filtroEstado?.value || "pendiente").trim().toLowerCase();
 
     let query = supabaseClient
       .from("boletin_envios")
@@ -264,16 +272,23 @@ async function cargarEnvios() {
     }
 
     if (!data || data.length === 0) {
-      adminList.innerHTML = `<p class="hint">No hay envíos para este filtro.</p>`;
+      if (adminList) {
+        adminList.innerHTML = `<p class="hint">No hay envíos para este filtro.</p>`;
+      }
       setStatus("Sin resultados.");
       await cargarConteosEstados();
+      actualizarVisibilidadBotonPublicar();
       return;
     }
 
-    adminList.innerHTML = data.map(renderCard).join("");
+    if (adminList) {
+      adminList.innerHTML = data.map(renderCard).join("");
+    }
+
     bindEstadoAutosave();
     setStatus(`Se cargaron ${data.length} envío(s).`, "success");
     await cargarConteosEstados();
+    actualizarVisibilidadBotonPublicar();
   } catch (error) {
     console.error(error);
     setStatus(`Error cargando envíos: ${error.message}`, "error");
@@ -328,7 +343,9 @@ function bindEstadoAutosave() {
 }
 
 async function cargarAprobadosParaPublicacion() {
-  publicacionPanel.classList.remove("hidden");
+  if (!publicacionPanel || !publicacionList || !boletinFecha) return;
+
+  publicacionPanel.hidden = false;
   publicacionList.innerHTML = "";
   boletinFecha.textContent = getFechaBoletin();
   setPublicacionStatus("Cargando artículos aprobados...");
@@ -393,6 +410,8 @@ async function marcarAprobadosComoPublicados() {
 }
 
 async function exportarPdf() {
+  if (!exportPdfBtn || !pdfContent) return;
+
   try {
     exportPdfBtn.disabled = true;
     setPublicacionStatus("Generando PDF...");
@@ -424,7 +443,10 @@ async function exportarPdf() {
     const result = await marcarAprobadosComoPublicados();
 
     if (!result.ok) {
-      setPublicacionStatus(`PDF generado, pero hubo un error actualizando estados: ${result.error.message}`, "error");
+      setPublicacionStatus(
+        `PDF generado, pero hubo un error actualizando estados: ${result.error.message}`,
+        "error"
+      );
       exportPdfBtn.disabled = false;
       return;
     }
@@ -433,7 +455,10 @@ async function exportarPdf() {
     setStatus(`Se publicaron ${result.total} artículo(s).`, "success");
 
     cerrarPanelPublicacion();
-    filtroEstado.value = "publicado";
+    if (filtroEstado) {
+      filtroEstado.value = "publicado";
+    }
+    actualizarVisibilidadBotonPublicar();
     await cargarEnvios();
   } catch (error) {
     console.error(error);
@@ -444,19 +469,37 @@ async function exportarPdf() {
 }
 
 function cerrarPanelPublicacion() {
-  publicacionPanel.classList.add("hidden");
-  publicacionList.innerHTML = "";
+  if (publicacionPanel) {
+    publicacionPanel.hidden = true;
+  }
+  if (publicacionList) {
+    publicacionList.innerHTML = "";
+  }
   setPublicacionStatus("");
 }
 
-reloadBtn?.addEventListener("click", cargarEnvios);
+reloadBtn?.addEventListener("click", async () => {
+  await cargarEnvios();
+});
+
 filtroEstado?.addEventListener("change", async () => {
   actualizarVisibilidadBotonPublicar();
   await cargarEnvios();
 });
-publicarBtn?.addEventListener("click", cargarAprobadosParaPublicacion);
+
+publicarBtn?.addEventListener("click", async () => {
+  const estado = (filtroEstado?.value || "").trim().toLowerCase();
+  if (estado !== "aprobado") return;
+  await cargarAprobadosParaPublicacion();
+});
+
 cerrarPublicacionBtn?.addEventListener("click", cerrarPanelPublicacion);
 exportPdfBtn?.addEventListener("click", exportarPdf);
+
+// Estado inicial: ocultar por defecto de forma nativa
+if (publicarBtnWrap) publicarBtnWrap.hidden = true;
+if (publicarBtn) publicarBtn.hidden = true;
+if (publicacionPanel) publicacionPanel.hidden = true;
 
 actualizarVisibilidadBotonPublicar();
 cargarEnvios();
