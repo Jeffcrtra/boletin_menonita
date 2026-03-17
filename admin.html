@@ -18,7 +18,7 @@
 
       <div class="form-wrap">
         <section class="section">
-          <div class="grid">
+          <div class="grid toolbar-grid">
             <div class="field">
               <label for="filtroEstado">Filtrar por estado</label>
               <select id="filtroEstado">
@@ -34,11 +34,33 @@
               <label>&nbsp;</label>
               <button type="button" id="reloadBtn">Recargar</button>
             </div>
+
+            <div class="field">
+              <label>&nbsp;</label>
+              <button type="button" id="publicarBtn" class="secondary-btn">Publicar boletín</button>
+            </div>
           </div>
         </section>
 
         <div id="status" class="status"></div>
         <div id="adminList" class="admin-list"></div>
+
+        <section id="publicacionPanel" class="publicacion-panel hidden">
+          <div class="publicacion-header">
+            <div>
+              <h2>Boletín listo para publicación</h2>
+              <p>Esta vista solo muestra envíos con estado <strong>aprobado</strong>.</p>
+            </div>
+
+            <div class="publicacion-actions">
+              <button type="button" id="marcarPublicadosBtn">Marcar aprobados como publicados</button>
+              <button type="button" id="cerrarPublicacionBtn" class="secondary-btn">Cerrar</button>
+            </div>
+          </div>
+
+          <div id="publicacionStatus" class="status"></div>
+          <div id="publicacionList" class="publicacion-list"></div>
+        </section>
       </div>
     </div>
   </main>
