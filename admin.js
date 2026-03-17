@@ -68,6 +68,33 @@ function getFechaBoletin() {
   return mes.replace(/^./, (c) => c.toUpperCase());
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function esperarImagenes(container) {
+  if (!container) return;
+
+  const imagenes = Array.from(container.querySelectorAll("img"));
+  if (imagenes.length === 0) return;
+
+  await Promise.all(
+    imagenes.map((img) => {
+      if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+
+      return new Promise((resolve) => {
+        const done = () => {
+          img.removeEventListener("load", done);
+          img.removeEventListener("error", done);
+          resolve();
+        };
+        img.addEventListener("load", done);
+        img.addEventListener("error", done);
+      });
+    })
+  );
+}
+
 function renderImagenes(imagenes, cssClass = "admin-images") {
   if (!imagenes || !Array.isArray(imagenes) || imagenes.length === 0) {
     return `<p class="hint">Sin imágenes</p>`;
@@ -77,7 +104,7 @@ function renderImagenes(imagenes, cssClass = "admin-images") {
     <div class="${cssClass}">
       ${imagenes.map((img) => `
         <a href="${escapeHtml(img.publicUrl)}" target="_blank" rel="noopener noreferrer">
-          <img src="${escapeHtml(img.publicUrl)}" alt="${escapeHtml(img.name || "imagen")}" />
+          <img src="${escapeHtml(img.publicUrl)}" alt="${escapeHtml(img.name || "imagen")}" crossorigin="anonymous" />
         </a>
       `).join("")}
     </div>
@@ -182,9 +209,7 @@ async function cargarConteosEstados() {
       .from("boletin_envios")
       .select("estado_editorial");
 
-    if (error) {
-      throw new Error(error.message);
-    }
+    if (error) throw new Error(error.message);
 
     const conteos = {
       pendiente: 0,
@@ -237,16 +262,9 @@ function actualizarVisibilidadBotonPublicar() {
   const estado = (filtroEstado.value || "").trim().toLowerCase();
   const mostrar = estado === "aprobado";
 
-  // Forma robusta: no depender solo del CSS
   publicarBtnWrap.hidden = !mostrar;
   publicarBtn.hidden = !mostrar;
   publicarBtn.disabled = !mostrar;
-
-  console.log("Visibilidad botón publicar:", {
-    estadoActual: estado,
-    mostrar,
-    wrapHidden: publicarBtnWrap.hidden
-  });
 }
 
 async function cargarEnvios() {
@@ -266,10 +284,7 @@ async function cargarEnvios() {
     }
 
     const { data, error } = await query;
-
-    if (error) {
-      throw new Error(error.message);
-    }
+    if (error) throw new Error(error.message);
 
     if (!data || data.length === 0) {
       if (adminList) {
@@ -303,10 +318,7 @@ async function actualizarEstado(id, nuevoEstado) {
       .eq("id", id)
       .select();
 
-    if (error) {
-      throw new Error(error.message);
-    }
-
+    if (error) throw new Error(error.message);
     return { ok: true, data };
   } catch (error) {
     console.error(error);
@@ -357,9 +369,7 @@ async function cargarAprobadosParaPublicacion() {
       .eq("estado_editorial", "aprobado")
       .order("created_at", { ascending: false });
 
-    if (error) {
-      throw new Error(error.message);
-    }
+    if (error) throw new Error(error.message);
 
     if (!data || data.length === 0) {
       publicacionList.innerHTML = `<p class="hint">No hay artículos aprobados para publicar.</p>`;
@@ -383,9 +393,7 @@ async function marcarAprobadosComoPublicados() {
       .select("id")
       .eq("estado_editorial", "aprobado");
 
-    if (errorConsulta) {
-      throw new Error(errorConsulta.message);
-    }
+    if (errorConsulta) throw new Error(errorConsulta.message);
 
     if (!aprobados || aprobados.length === 0) {
       return { ok: true, total: 0 };
@@ -398,9 +406,7 @@ async function marcarAprobadosComoPublicados() {
       .update({ estado_editorial: "publicado" })
       .in("id", ids);
 
-    if (errorUpdate) {
-      throw new Error(errorUpdate.message);
-    }
+    if (errorUpdate) throw new Error(errorUpdate.message);
 
     return { ok: true, total: ids.length };
   } catch (error) {
@@ -412,20 +418,61 @@ async function marcarAprobadosComoPublicados() {
 async function exportarPdf() {
   if (!exportPdfBtn || !pdfContent) return;
 
+  let tempWrapper = null;
+
   try {
     exportPdfBtn.disabled = true;
+    setPublicacionStatus("Preparando PDF...");
+
+    // 1) Clonar contenido para exportarlo visible fuera del flujo normal
+    tempWrapper = document.createElement("div");
+    tempWrapper.id = "pdf-export-temp";
+    tempWrapper.style.position = "fixed";
+    tempWrapper.style.left = "0";
+    tempWrapper.style.top = "0";
+    tempWrapper.style.width = "794px";
+    tempWrapper.style.background = "#ffffff";
+    tempWrapper.style.zIndex = "-1";
+    tempWrapper.style.opacity = "1";
+    tempWrapper.style.padding = "24px";
+    tempWrapper.style.boxSizing = "border-box";
+
+    const clone = pdfContent.cloneNode(true);
+    clone.hidden = false;
+    clone.style.display = "block";
+    clone.style.visibility = "visible";
+    clone.style.background = "#ffffff";
+    clone.style.color = "#111111";
+
+    tempWrapper.appendChild(clone);
+    document.body.appendChild(tempWrapper);
+
+    // 2) Esperar render e imágenes
+    await sleep(300);
+    await esperarImagenes(tempWrapper);
+    await sleep(300);
+
     setPublicacionStatus("Generando PDF...");
 
     const opciones = {
       margin: [10, 10, 10, 10],
       filename: `boletin-menonita-${new Date().toISOString().slice(0, 10)}.pdf`,
-      image: { type: "jpeg", quality: 0.95 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false
+      },
+      jsPDF: {
+        unit: "mm",
+        format: "a4",
+        orientation: "portrait"
+      },
       pagebreak: { mode: ["css", "legacy"] }
     };
 
-    await html2pdf().set(opciones).from(pdfContent).save();
+    await html2pdf().set(opciones).from(tempWrapper).save();
 
     setPublicacionStatus("PDF exportado correctamente.", "success");
 
@@ -433,10 +480,7 @@ async function exportarPdf() {
       '¿Deseas cambiar automáticamente todos los artículos "aprobado" a "publicado"?'
     );
 
-    if (!cambiarEstados) {
-      exportPdfBtn.disabled = false;
-      return;
-    }
+    if (!cambiarEstados) return;
 
     setPublicacionStatus('Actualizando artículos a "publicado"...');
 
@@ -447,7 +491,6 @@ async function exportarPdf() {
         `PDF generado, pero hubo un error actualizando estados: ${result.error.message}`,
         "error"
       );
-      exportPdfBtn.disabled = false;
       return;
     }
 
@@ -465,6 +508,9 @@ async function exportarPdf() {
     setPublicacionStatus(`Error exportando PDF: ${error.message}`, "error");
   } finally {
     exportPdfBtn.disabled = false;
+    if (tempWrapper && tempWrapper.parentNode) {
+      tempWrapper.parentNode.removeChild(tempWrapper);
+    }
   }
 }
 
@@ -496,7 +542,6 @@ publicarBtn?.addEventListener("click", async () => {
 cerrarPublicacionBtn?.addEventListener("click", cerrarPanelPublicacion);
 exportPdfBtn?.addEventListener("click", exportarPdf);
 
-// Estado inicial: ocultar por defecto de forma nativa
 if (publicarBtnWrap) publicarBtnWrap.hidden = true;
 if (publicarBtn) publicarBtn.hidden = true;
 if (publicacionPanel) publicacionPanel.hidden = true;
