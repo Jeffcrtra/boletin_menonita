@@ -459,7 +459,9 @@ button:disabled{
     width: 100%;
     max-width: 800px;
     height: auto;
-    display: block;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     margin: 8px 0;
     border-radius: 8px;
   }
