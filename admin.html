@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Admin Boletín Menonita</title>
+  <title>10.50 Admin Boletín Menonita</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
@@ -36,10 +36,9 @@
               <button type="button" id="reloadBtn">Recargar</button>
             </div>
 
-            <div class="field hidden" id="publicarBtnWrap">
-              <label>&nbsp;</label>
-              <button type="button" id="publicarBtn">Publicar boletín</button>
-            </div>
+            <div class="field" id="publicarBtnWrap" hidden>
+            <label>&nbsp;</label>
+            <button type="button" id="publicarBtn" hidden>Publicar boletín</button>
           </div>
         </section>
 
@@ -47,7 +46,7 @@
         <div id="adminList" class="admin-list"></div>
       </div>
 
-      <section id="publicacionPanel" class="publicacion-panel hidden">
+      <section id="publicacionPanel" class="publicacion-panel" hidden>
         <div class="publicacion-toolbar no-print">
           <div>
             <h2>Vista para maquetación</h2>
