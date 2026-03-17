@@ -205,7 +205,8 @@ async function cargarConteosEstados() {
 }
 
 function actualizarOpcionesFiltro(conteos) {
-  const valorActual = filtroEstado.value || "pendiente";
+  const valorActual = (filtroEstado.value || "pendiente").trim().toLowerCase();
+
   const total =
     (conteos.pendiente || 0) +
     (conteos.aprobado || 0) +
@@ -220,17 +221,24 @@ function actualizarOpcionesFiltro(conteos) {
     <option value="todos">Todos (${total})</option>
   `;
 
-  filtroEstado.value = valorActual;
+  const valoresValidos = ["pendiente", "aprobado", "publicado", "rechazado", "todos"];
+  filtroEstado.value = valoresValidos.includes(valorActual) ? valorActual : "pendiente";
+
   actualizarVisibilidadBotonPublicar();
 }
 
 function actualizarVisibilidadBotonPublicar() {
-  const estado = filtroEstado.value;
-  if (estado === "aprobado") {
-    publicarBtnWrap.classList.remove("hidden");
-  } else {
-    publicarBtnWrap.classList.add("hidden");
-  }
+  if (!publicarBtnWrap || !filtroEstado) return;
+
+  const estado = (filtroEstado.value || "").trim().toLowerCase();
+  const mostrar = estado === "aprobado";
+
+  publicarBtnWrap.classList.toggle("hidden", !mostrar);
+
+  console.log("Visibilidad botón publicar:", {
+    estadoActual: estado,
+    mostrar
+  });
 }
 
 async function cargarEnvios() {
