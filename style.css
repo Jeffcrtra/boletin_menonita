@@ -344,7 +344,7 @@ button:disabled{
   }
   
   .hidden {
-    display: none;
+    display: none !important;
   }
   
   .admin-actions {
@@ -466,10 +466,6 @@ button:disabled{
     border-radius: 8px;
   }
 
-  .hidden {
-    display: none !important;
-  }
-  
   .no-print {
     display: block;
   }
