@@ -6,17 +6,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="admin.js" defer></script>
 </head>
 <body>
   <main class="page">
     <div class="container">
-      <header class="header">
+      <header class="header no-print">
         <h1>Panel editorial</h1>
         <p>Revisión de envíos del boletín</p>
       </header>
 
-      <div class="form-wrap">
+      <div class="form-wrap no-print">
         <section class="section">
           <div class="grid toolbar-grid">
             <div class="field">
@@ -35,33 +36,43 @@
               <button type="button" id="reloadBtn">Recargar</button>
             </div>
 
-            <div class="field">
+            <div class="field" id="publicarBtnWrap">
               <label>&nbsp;</label>
-              <button type="button" id="publicarBtn" class="secondary-btn">Publicar boletín</button>
+              <button type="button" id="publicarBtn">Publicar boletín</button>
             </div>
           </div>
         </section>
 
         <div id="status" class="status"></div>
         <div id="adminList" class="admin-list"></div>
+      </div>
 
-        <section id="publicacionPanel" class="publicacion-panel hidden">
-          <div class="publicacion-header">
-            <div>
-              <h2>Boletín listo para publicación</h2>
-              <p>Esta vista solo muestra envíos con estado <strong>aprobado</strong>.</p>
-            </div>
-
-            <div class="publicacion-actions">
-              <button type="button" id="marcarPublicadosBtn">Marcar aprobados como publicados</button>
-              <button type="button" id="cerrarPublicacionBtn" class="secondary-btn">Cerrar</button>
-            </div>
+      <section id="publicacionPanel" class="publicacion-panel hidden">
+        <div class="publicacion-toolbar no-print">
+          <div>
+            <h2>Vista para maquetación</h2>
+            <p>Incluye únicamente artículos aprobados.</p>
           </div>
 
-          <div id="publicacionStatus" class="status"></div>
+          <div class="publicacion-toolbar-actions">
+            <button type="button" id="exportPdfBtn">Exportar PDF</button>
+            <button type="button" id="cerrarPublicacionBtn" class="secondary-btn">Cerrar</button>
+          </div>
+        </div>
+
+        <div id="publicacionStatus" class="status no-print"></div>
+
+        <div id="pdfContent" class="pdf-content">
+          <header class="boletin-cover">
+            <p class="boletin-kicker">BOLETÍN MENSUAL</p>
+            <h1>El Mensajero Menonita CR</h1>
+            <p id="boletinFecha" class="boletin-subtitle"></p>
+            <p class="boletin-org">Asociación de Iglesias Cristianas Menonitas de Costa Rica</p>
+          </header>
+
           <div id="publicacionList" class="publicacion-list"></div>
-        </section>
-      </div>
+        </div>
+      </section>
     </div>
   </main>
 </body>
