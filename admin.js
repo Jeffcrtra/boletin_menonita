@@ -9,7 +9,6 @@ const supabaseClient = createClient(supabaseUrl, supabaseKey);
 const statusEl = document.getElementById("status");
 const adminList = document.getElementById("adminList");
 const filtroEstado = document.getElementById("filtroEstado");
-const reloadBtn = document.getElementById("reloadBtn");
 const publicarBtn = document.getElementById("publicarBtn");
 const publicarBtnWrap = document.getElementById("publicarBtnWrap");
 
@@ -80,7 +79,7 @@ async function esperarImagenes(container) {
 
   await Promise.all(
     imagenes.map((img) => {
-      if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+      if (img.complete) return Promise.resolve();
 
       return new Promise((resolve) => {
         const done = () => {
@@ -176,7 +175,7 @@ function renderCard(row) {
 
 function renderPublicacionCard(row, index) {
   return `
-    <article class="boletin-articulo">
+    <article class="boletin-articulo print-page-break">
       <div class="boletin-articulo-head">
         <div>
           <p class="boletin-numero">Artículo ${index + 1}</p>
@@ -378,6 +377,7 @@ async function cargarAprobadosParaPublicacion() {
     }
 
     publicacionList.innerHTML = data.map((row, index) => renderPublicacionCard(row, index)).join("");
+    await esperarImagenes(publicacionList);
     setPublicacionStatus(`Se prepararon ${data.length} artículo(s) aprobados para maquetación.`, "success");
     publicacionPanel.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
@@ -415,72 +415,214 @@ async function marcarAprobadosComoPublicados() {
   }
 }
 
+function getPrintStyles() {
+  return `
+    <style>
+      @page {
+        size: A4;
+        margin: 16mm;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: #ffffff;
+        color: #111111;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 12pt;
+        line-height: 1.5;
+      }
+
+      body {
+        padding: 0;
+      }
+
+      .print-root {
+        width: 100%;
+      }
+
+      .boletin-cover {
+        text-align: center;
+        padding: 24px 0 16px;
+        border-bottom: 2px solid #222;
+        margin-bottom: 24px;
+        page-break-after: always;
+        break-after: page;
+      }
+
+      .boletin-kicker {
+        margin: 0 0 8px;
+        font-size: 11pt;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+
+      .boletin-cover h1 {
+        margin: 0 0 12px;
+        font-size: 24pt;
+        line-height: 1.2;
+      }
+
+      .boletin-subtitle,
+      .boletin-org {
+        margin: 6px 0;
+        font-size: 12pt;
+      }
+
+      .publicacion-list {
+        width: 100%;
+      }
+
+      .boletin-articulo {
+        width: 100%;
+        margin: 0 0 24px;
+        padding: 0 0 18px;
+        border-bottom: 1px solid #ccc;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      .boletin-articulo.print-page-break {
+        page-break-before: auto;
+      }
+
+      .boletin-articulo:not(:last-child) {
+        page-break-after: always;
+        break-after: page;
+      }
+
+      .boletin-numero {
+        margin: 0 0 6px;
+        font-size: 10pt;
+        text-transform: uppercase;
+      }
+
+      .boletin-articulo h2 {
+        margin: 0 0 14px;
+        font-size: 18pt;
+        line-height: 1.25;
+      }
+
+      .boletin-meta {
+        margin-bottom: 14px;
+      }
+
+      .boletin-meta p {
+        margin: 2px 0;
+      }
+
+      .boletin-contenido {
+        margin: 14px 0 16px;
+        white-space: normal;
+        word-break: break-word;
+      }
+
+      .publicacion-images,
+      .boletin-imagenes {
+        display: block;
+        width: 100%;
+      }
+
+      .publicacion-images a,
+      .boletin-imagenes a {
+        text-decoration: none;
+      }
+
+      .publicacion-images img,
+      .boletin-imagenes img {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        margin: 0 0 12px;
+        border-radius: 0;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .hint {
+        color: #666;
+        font-style: italic;
+      }
+    </style>
+  `;
+}
+
+function getPrintHtml() {
+  if (!pdfContent) return "";
+
+  return `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8" />
+      <title>Boletín Menonita</title>
+      ${getPrintStyles()}
+    </head>
+    <body>
+      <div class="print-root">
+        ${pdfContent.outerHTML}
+      </div>
+    </body>
+    </html>
+  `;
+}
+
 async function exportarPdf() {
   if (!exportPdfBtn || !pdfContent) return;
 
-  let tempWrapper = null;
-
   try {
     exportPdfBtn.disabled = true;
-    setPublicacionStatus("Preparando PDF...");
+    setPublicacionStatus("Preparando vista de impresión...");
 
-    // 1) Clonar contenido para exportarlo visible fuera del flujo normal
-    tempWrapper = document.createElement("div");
-    tempWrapper.id = "pdf-export-temp";
-    tempWrapper.style.position = "fixed";
-    tempWrapper.style.left = "0";
-    tempWrapper.style.top = "0";
-    tempWrapper.style.width = "794px";
-    tempWrapper.style.background = "#ffffff";
-    tempWrapper.style.zIndex = "-1";
-    tempWrapper.style.opacity = "1";
-    tempWrapper.style.padding = "24px";
-    tempWrapper.style.boxSizing = "border-box";
-
-    const clone = pdfContent.cloneNode(true);
-    clone.hidden = false;
-    clone.style.display = "block";
-    clone.style.visibility = "visible";
-    clone.style.background = "#ffffff";
-    clone.style.color = "#111111";
-
-    tempWrapper.appendChild(clone);
-    document.body.appendChild(tempWrapper);
-
-    // 2) Esperar render e imágenes
-    await sleep(300);
-    await esperarImagenes(tempWrapper);
+    await esperarImagenes(pdfContent);
     await sleep(300);
 
-    setPublicacionStatus("Generando PDF...");
+    const printWindow = window.open("", "_blank", "width=900,height=1200");
 
-    const opciones = {
-      margin: [10, 10, 10, 10],
-      filename: `boletin-menonita-${new Date().toISOString().slice(0, 10)}.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false
-      },
-      jsPDF: {
-        unit: "mm",
-        format: "a4",
-        orientation: "portrait"
-      },
-      pagebreak: { mode: ["css", "legacy"] }
-    };
+    if (!printWindow) {
+      throw new Error("El navegador bloqueó la ventana emergente de impresión.");
+    }
 
-    await html2pdf().set(opciones).from(tempWrapper).save();
+    printWindow.document.open();
+    printWindow.document.write(getPrintHtml());
+    printWindow.document.close();
 
-    setPublicacionStatus("PDF exportado correctamente.", "success");
+    await new Promise((resolve) => {
+      printWindow.onload = resolve;
+      setTimeout(resolve, 1200);
+    });
 
-    const cambiarEstados = window.confirm(
-      '¿Deseas cambiar automáticamente todos los artículos "aprobado" a "publicado"?'
+    await sleep(500);
+
+    const imgs = Array.from(printWindow.document.images || []);
+    await Promise.all(
+      imgs.map((img) => {
+        if (img.complete) return Promise.resolve();
+        return new Promise((resolve) => {
+          img.onload = resolve;
+          img.onerror = resolve;
+        });
+      })
     );
 
-    if (!cambiarEstados) return;
+    setPublicacionStatus("Abriendo diálogo para guardar como PDF...", "success");
+
+    printWindow.focus();
+    printWindow.print();
+
+    const cambiarEstados = window.confirm(
+      'Cuando termines de guardar/imprimir el PDF, ¿deseas cambiar automáticamente todos los artículos "aprobado" a "publicado"?'
+    );
+
+    if (!cambiarEstados) {
+      exportPdfBtn.disabled = false;
+      return;
+    }
 
     setPublicacionStatus('Actualizando artículos a "publicado"...');
 
@@ -488,13 +630,14 @@ async function exportarPdf() {
 
     if (!result.ok) {
       setPublicacionStatus(
-        `PDF generado, pero hubo un error actualizando estados: ${result.error.message}`,
+        `Se abrió la impresión, pero hubo un error actualizando estados: ${result.error.message}`,
         "error"
       );
+      exportPdfBtn.disabled = false;
       return;
     }
 
-    setPublicacionStatus(`PDF exportado y ${result.total} artículo(s) pasaron a "publicado".`, "success");
+    setPublicacionStatus(`Impresión lista y ${result.total} artículo(s) pasaron a "publicado".`, "success");
     setStatus(`Se publicaron ${result.total} artículo(s).`, "success");
 
     cerrarPanelPublicacion();
@@ -505,12 +648,9 @@ async function exportarPdf() {
     await cargarEnvios();
   } catch (error) {
     console.error(error);
-    setPublicacionStatus(`Error exportando PDF: ${error.message}`, "error");
+    setPublicacionStatus(`Error exportando/imprimiendo PDF: ${error.message}`, "error");
   } finally {
     exportPdfBtn.disabled = false;
-    if (tempWrapper && tempWrapper.parentNode) {
-      tempWrapper.parentNode.removeChild(tempWrapper);
-    }
   }
 }
 
@@ -523,10 +663,6 @@ function cerrarPanelPublicacion() {
   }
   setPublicacionStatus("");
 }
-
-reloadBtn?.addEventListener("click", async () => {
-  await cargarEnvios();
-});
 
 filtroEstado?.addEventListener("change", async () => {
   actualizarVisibilidadBotonPublicar();
