@@ -11,12 +11,15 @@ const adminList = document.getElementById("adminList");
 const filtroEstado = document.getElementById("filtroEstado");
 const reloadBtn = document.getElementById("reloadBtn");
 const publicarBtn = document.getElementById("publicarBtn");
+const publicarBtnWrap = document.getElementById("publicarBtnWrap");
 
 const publicacionPanel = document.getElementById("publicacionPanel");
 const publicacionList = document.getElementById("publicacionList");
 const publicacionStatus = document.getElementById("publicacionStatus");
-const marcarPublicadosBtn = document.getElementById("marcarPublicadosBtn");
 const cerrarPublicacionBtn = document.getElementById("cerrarPublicacionBtn");
+const exportPdfBtn = document.getElementById("exportPdfBtn");
+const boletinFecha = document.getElementById("boletinFecha");
+const pdfContent = document.getElementById("pdfContent");
 
 const ESTADOS = ["pendiente", "aprobado", "publicado", "rechazado"];
 
@@ -54,13 +57,22 @@ function capitalizar(text) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-function renderImagenes(imagenes) {
+function getFechaBoletin() {
+  const ahora = new Date();
+  const mes = ahora.toLocaleDateString("es-CR", {
+    month: "long",
+    year: "numeric"
+  });
+  return mes.replace(/^./, (c) => c.toUpperCase());
+}
+
+function renderImagenes(imagenes, cssClass = "admin-images") {
   if (!imagenes || !Array.isArray(imagenes) || imagenes.length === 0) {
     return `<p class="hint">Sin imágenes</p>`;
   }
 
   return `
-    <div class="admin-images">
+    <div class="${cssClass}">
       ${imagenes.map((img) => `
         <a href="${escapeHtml(img.publicUrl)}" target="_blank" rel="noopener noreferrer">
           <img src="${escapeHtml(img.publicUrl)}" alt="${escapeHtml(img.name || "imagen")}" />
@@ -127,21 +139,23 @@ function renderCard(row) {
 
       <div class="admin-block">
         <strong>Imágenes</strong>
-        ${renderImagenes(row.imagenes)}
+        ${renderImagenes(row.imagenes, "admin-images")}
       </div>
     </article>
   `;
 }
 
-function renderPublicacionCard(row) {
+function renderPublicacionCard(row, index) {
   return `
-    <article class="publicacion-card">
-      <div class="publicacion-card-top">
-        <h3>${escapeHtml(row.titulo || "Sin título")}</h3>
-        ${renderEstadoBadge(row.estado_editorial || "—")}
+    <article class="boletin-articulo">
+      <div class="boletin-articulo-head">
+        <div>
+          <p class="boletin-numero">Artículo ${index + 1}</p>
+          <h2>${escapeHtml(row.titulo || "Sin título")}</h2>
+        </div>
       </div>
 
-      <div class="publicacion-meta">
+      <div class="boletin-meta">
         <p><strong>Iglesia:</strong> ${escapeHtml(row.iglesia || "—")}</p>
         <p><strong>Zona:</strong> ${escapeHtml(row.zona || "—")}</p>
         <p><strong>Autor:</strong> ${escapeHtml(row.autor || "—")}</p>
@@ -149,12 +163,12 @@ function renderPublicacionCard(row) {
         <p><strong>Fecha del evento:</strong> ${escapeHtml(row.fecha_evento || "—")}</p>
       </div>
 
-      <div class="publicacion-content">
+      <div class="boletin-contenido">
         ${escapeHtml(row.contenido || "").replaceAll("\n", "<br>")}
       </div>
 
-      <div class="publicacion-images">
-        ${renderImagenes(row.imagenes)}
+      <div class="boletin-imagenes">
+        ${renderImagenes(row.imagenes, "publicacion-images")}
       </div>
     </article>
   `;
@@ -179,7 +193,7 @@ async function cargarConteosEstados() {
 
     for (const row of data || []) {
       const estado = row.estado_editorial;
-      if (conteos.hasOwnProperty(estado)) {
+      if (Object.prototype.hasOwnProperty.call(conteos, estado)) {
         conteos[estado]++;
       }
     }
@@ -207,6 +221,16 @@ function actualizarOpcionesFiltro(conteos) {
   `;
 
   filtroEstado.value = valorActual;
+  actualizarVisibilidadBotonPublicar();
+}
+
+function actualizarVisibilidadBotonPublicar() {
+  const estado = filtroEstado.value;
+  if (estado === "aprobado") {
+    publicarBtnWrap.classList.remove("hidden");
+  } else {
+    publicarBtnWrap.classList.add("hidden");
+  }
 }
 
 async function cargarEnvios() {
@@ -215,7 +239,6 @@ async function cargarEnvios() {
 
   try {
     const estado = filtroEstado.value;
-    console.log("Filtro actual:", estado);
 
     let query = supabaseClient
       .from("boletin_envios")
@@ -232,17 +255,16 @@ async function cargarEnvios() {
       throw new Error(error.message);
     }
 
-    console.log("Envíos cargados:", data);
-
     if (!data || data.length === 0) {
       adminList.innerHTML = `<p class="hint">No hay envíos para este filtro.</p>`;
       setStatus("Sin resultados.");
+      await cargarConteosEstados();
       return;
     }
 
     adminList.innerHTML = data.map(renderCard).join("");
-    setStatus(`Se cargaron ${data.length} envío(s).`, "success");
     bindEstadoAutosave();
+    setStatus(`Se cargaron ${data.length} envío(s).`, "success");
     await cargarConteosEstados();
   } catch (error) {
     console.error(error);
@@ -252,8 +274,6 @@ async function cargarEnvios() {
 
 async function actualizarEstado(id, nuevoEstado) {
   try {
-    console.log("Actualizando estado:", { id, nuevoEstado });
-
     const { data, error } = await supabaseClient
       .from("boletin_envios")
       .update({ estado_editorial: nuevoEstado })
@@ -264,7 +284,6 @@ async function actualizarEstado(id, nuevoEstado) {
       throw new Error(error.message);
     }
 
-    console.log("Resultado update:", data);
     return { ok: true, data };
   } catch (error) {
     console.error(error);
@@ -279,9 +298,7 @@ function bindEstadoAutosave() {
       const estadoActual = select.dataset.estadoActual;
       const nuevoEstado = select.value;
 
-      if (nuevoEstado === estadoActual) {
-        return;
-      }
+      if (nuevoEstado === estadoActual) return;
 
       select.disabled = true;
       setStatus(`Guardando cambio a "${nuevoEstado}"...`);
@@ -297,7 +314,6 @@ function bindEstadoAutosave() {
 
       select.dataset.estadoActual = nuevoEstado;
       setStatus(`Estado actualizado a "${nuevoEstado}".`, "success");
-
       await cargarEnvios();
     });
   });
@@ -306,7 +322,8 @@ function bindEstadoAutosave() {
 async function cargarAprobadosParaPublicacion() {
   publicacionPanel.classList.remove("hidden");
   publicacionList.innerHTML = "";
-  setPublicacionStatus("Cargando aprobados...");
+  boletinFecha.textContent = getFechaBoletin();
+  setPublicacionStatus("Cargando artículos aprobados...");
 
   try {
     const { data, error } = await supabaseClient
@@ -320,29 +337,21 @@ async function cargarAprobadosParaPublicacion() {
     }
 
     if (!data || data.length === 0) {
-      publicacionList.innerHTML = `<p class="hint">No hay envíos aprobados para publicar.</p>`;
+      publicacionList.innerHTML = `<p class="hint">No hay artículos aprobados para publicar.</p>`;
       setPublicacionStatus("No hay aprobados disponibles.");
       return;
     }
 
-    publicacionList.innerHTML = data.map(renderPublicacionCard).join("");
-    setPublicacionStatus(`Se cargaron ${data.length} envío(s) aprobados.`, "success");
+    publicacionList.innerHTML = data.map((row, index) => renderPublicacionCard(row, index)).join("");
+    setPublicacionStatus(`Se prepararon ${data.length} artículo(s) aprobados para maquetación.`, "success");
+    publicacionPanel.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
     console.error(error);
-    setPublicacionStatus(`Error cargando aprobados: ${error.message}`, "error");
+    setPublicacionStatus(`Error preparando publicación: ${error.message}`, "error");
   }
 }
 
 async function marcarAprobadosComoPublicados() {
-  const confirmar = window.confirm(
-    'Esto cambiará todos los envíos con estado "aprobado" a "publicado". ¿Deseas continuar?'
-  );
-
-  if (!confirmar) return;
-
-  marcarPublicadosBtn.disabled = true;
-  setPublicacionStatus('Marcando aprobados como "publicado"...');
-
   try {
     const { data: aprobados, error: errorConsulta } = await supabaseClient
       .from("boletin_envios")
@@ -354,9 +363,7 @@ async function marcarAprobadosComoPublicados() {
     }
 
     if (!aprobados || aprobados.length === 0) {
-      setPublicacionStatus("No hay aprobados para marcar como publicados.");
-      marcarPublicadosBtn.disabled = false;
-      return;
+      return { ok: true, total: 0 };
     }
 
     const ids = aprobados.map((item) => item.id);
@@ -370,16 +377,61 @@ async function marcarAprobadosComoPublicados() {
       throw new Error(errorUpdate.message);
     }
 
-    setPublicacionStatus(`Se marcaron ${ids.length} envío(s) como publicados.`, "success");
-    setStatus(`Se publicaron ${ids.length} envío(s).`, "success");
-
-    await cargarEnvios();
-    await cargarAprobadosParaPublicacion();
+    return { ok: true, total: ids.length };
   } catch (error) {
     console.error(error);
-    setPublicacionStatus(`Error publicando boletín: ${error.message}`, "error");
+    return { ok: false, error };
+  }
+}
+
+async function exportarPdf() {
+  try {
+    exportPdfBtn.disabled = true;
+    setPublicacionStatus("Generando PDF...");
+
+    const opciones = {
+      margin: [10, 10, 10, 10],
+      filename: `boletin-menonita-${new Date().toISOString().slice(0, 10)}.pdf`,
+      image: { type: "jpeg", quality: 0.95 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["css", "legacy"] }
+    };
+
+    await html2pdf().set(opciones).from(pdfContent).save();
+
+    setPublicacionStatus("PDF exportado correctamente.", "success");
+
+    const cambiarEstados = window.confirm(
+      '¿Deseas cambiar automáticamente todos los artículos "aprobado" a "publicado"?'
+    );
+
+    if (!cambiarEstados) {
+      exportPdfBtn.disabled = false;
+      return;
+    }
+
+    setPublicacionStatus('Actualizando artículos a "publicado"...');
+
+    const result = await marcarAprobadosComoPublicados();
+
+    if (!result.ok) {
+      setPublicacionStatus(`PDF generado, pero hubo un error actualizando estados: ${result.error.message}`, "error");
+      exportPdfBtn.disabled = false;
+      return;
+    }
+
+    setPublicacionStatus(`PDF exportado y ${result.total} artículo(s) pasaron a "publicado".`, "success");
+    setStatus(`Se publicaron ${result.total} artículo(s).`, "success");
+
+    cerrarPanelPublicacion();
+    filtroEstado.value = "publicado";
+    await cargarEnvios();
+  } catch (error) {
+    console.error(error);
+    setPublicacionStatus(`Error exportando PDF: ${error.message}`, "error");
   } finally {
-    marcarPublicadosBtn.disabled = false;
+    exportPdfBtn.disabled = false;
   }
 }
 
@@ -390,9 +442,13 @@ function cerrarPanelPublicacion() {
 }
 
 reloadBtn?.addEventListener("click", cargarEnvios);
-filtroEstado?.addEventListener("change", cargarEnvios);
+filtroEstado?.addEventListener("change", async () => {
+  actualizarVisibilidadBotonPublicar();
+  await cargarEnvios();
+});
 publicarBtn?.addEventListener("click", cargarAprobadosParaPublicacion);
-marcarPublicadosBtn?.addEventListener("click", marcarAprobadosComoPublicados);
 cerrarPublicacionBtn?.addEventListener("click", cerrarPanelPublicacion);
+exportPdfBtn?.addEventListener("click", exportarPdf);
 
+actualizarVisibilidadBotonPublicar();
 cargarEnvios();
