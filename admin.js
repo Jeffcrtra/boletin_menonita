@@ -160,6 +160,55 @@ function renderPublicacionCard(row) {
   `;
 }
 
+async function cargarConteosEstados() {
+  try {
+    const { data, error } = await supabaseClient
+      .from("boletin_envios")
+      .select("estado_editorial");
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const conteos = {
+      pendiente: 0,
+      aprobado: 0,
+      publicado: 0,
+      rechazado: 0
+    };
+
+    for (const row of data || []) {
+      const estado = row.estado_editorial;
+      if (conteos.hasOwnProperty(estado)) {
+        conteos[estado]++;
+      }
+    }
+
+    actualizarOpcionesFiltro(conteos);
+  } catch (error) {
+    console.error("Error cargando conteos:", error);
+  }
+}
+
+function actualizarOpcionesFiltro(conteos) {
+  const valorActual = filtroEstado.value || "pendiente";
+  const total =
+    (conteos.pendiente || 0) +
+    (conteos.aprobado || 0) +
+    (conteos.publicado || 0) +
+    (conteos.rechazado || 0);
+
+  filtroEstado.innerHTML = `
+    <option value="pendiente">Pendiente (${conteos.pendiente || 0})</option>
+    <option value="aprobado">Aprobado (${conteos.aprobado || 0})</option>
+    <option value="publicado">Publicado (${conteos.publicado || 0})</option>
+    <option value="rechazado">Rechazado (${conteos.rechazado || 0})</option>
+    <option value="todos">Todos (${total})</option>
+  `;
+
+  filtroEstado.value = valorActual;
+}
+
 async function cargarEnvios() {
   setStatus("Cargando envíos...");
   adminList.innerHTML = "";
@@ -194,6 +243,7 @@ async function cargarEnvios() {
     adminList.innerHTML = data.map(renderCard).join("");
     setStatus(`Se cargaron ${data.length} envío(s).`, "success");
     bindEstadoAutosave();
+    await cargarConteosEstados();
   } catch (error) {
     console.error(error);
     setStatus(`Error cargando envíos: ${error.message}`, "error");
